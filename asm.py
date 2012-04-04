@@ -192,10 +192,9 @@ def main(args):
                     raise Exception( 'Don\'t know how to evaluate `%s` in argument of `ord`' % args[0] )
             elif op == 'dat':         # various literal data
                 for a in args:
-                    if type(a) == int: state.emit(a)
-                    elif type(a) == StrData:
+                    if type(a) == StrData:
                         for x in a.expr: state.emit(ord(x))
-                    else: state.emit(a) # a symbol
+                    else: state.emit(a) # literal or symbol
 
             elif op == 'jsr':     # todo: proper dispatch for extended ops
                 check_num_operands(1)
