@@ -55,7 +55,7 @@ ident     = Keyword('sp+') | Keyword('-sp') |\
                 Word(alphas + '_.', alphanums + '_.')
 number    = Regex('0x[0-9a-fA-F]+|[0-9]+').setParseAction(basenum)
 comment   = Regex(';.*$')
-label     = ident + Suppress(':')
+label     = (ident + Suppress(':')) | (Suppress(':') + ident)
 op        = Keywords([o for o in ops if o])
 val3      = ident | number | quotedString.setParseAction(StrData)
 val2      = (val3 + Optional(Suppress('+') + val3)).setParseAction(maybeAdd);

@@ -8,3 +8,5 @@
 .local:     sub pc, 1           ; loop here forever
 .data:      dat "Hello World", 0
 global:           ; just a label by itself
+
+:crapstyle  dat "Blah labels are supported too", 0
