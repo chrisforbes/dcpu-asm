@@ -20,7 +20,9 @@ from pyparsing import *
 
 # note: dat,org pseudo-ops
 ops = [None, 'set','add','sub','mul','div','mod','shl','shr',
-       'and','bor','xor','ife','ifn','ifg','ifb','dat','org','jsr']
+       'and','bor','xor','ife','ifn','ifg','ifb','dat','org']
+
+xops = [None, 'jsr']    # encoded in 0-operand space
 
 def Keywords(xs):
     return reduce(operator.or_, map(Keyword,xs))
@@ -56,7 +58,7 @@ ident     = Keyword('sp+') | Keyword('-sp') |\
 number    = Regex('0x[0-9a-fA-F]+|[0-9]+').setParseAction(basenum)
 comment   = Regex(';.*$')
 label     = (ident + Suppress(':')) | (Suppress(':') + ident)
-op        = Keywords([o for o in ops if o])
+op        = Keywords([o for o in (ops+xops) if o])
 val3      = ident | number | quotedString.setParseAction(StrData)
 val2      = (val3 + Optional(Suppress('+') + val3)).setParseAction(maybeAdd);
 memref    = (Suppress('[') + val2 + Suppress(']')).setParseAction(MemRef);
@@ -183,8 +185,6 @@ def main(args):
             def check_num_operands(expected):
                 if len(args) != expected:
                     raise Exception( 'Expected %d operands for `%s`, got %d' % (expected, op, len(args)) )
-
-            opindex = ops.index(op)
             if op == 'org':
                 check_num_operands(1)
                 state.maxorg = max(state.org,state.maxorg)
@@ -197,21 +197,21 @@ def main(args):
                     if type(a) == StrData:
                         for x in a.expr: state.emit(ord(x))
                     else: state.emit(a) # literal or symbol
-
-            elif op == 'jsr':     # todo: proper dispatch for extended ops
-                check_num_operands(1)
-                # extended instruction format aaaaaaoooooo0000: 0=zero, o=opcode, a=operand
-                op1,e1 = assemble_arg(args[0])
-                state.emit(0 | (1<<4) | (op1<<10))
-                for e in e1: state.emit(e)
-
-            else:
+            elif op in ops:
+                opindex = ops.index(op)
                 check_num_operands(2)
                 op1,e1 = assemble_arg(args[0])
                 op2,e2 = assemble_arg(args[1])
                 # instruction format: bbbbbbaaaaaaoooo: o=opcode, a=first operand, b=second operand
                 state.emit(opindex | (op1<<4) | (op2<<10))
                 for e in e1+e2: state.emit(e)
+            elif op in xops:
+                opindex = xops.index(op)
+                check_num_operands(1)
+                # extended instruction format aaaaaaoooooo0000: 0=zero, o=opcode, a=operand
+                op1,e1 = assemble_arg(args[0])
+                state.emit(0 | (opindex<<4) | (op1<<10))
+                for e in e1: state.emit(e)
 
     state.flushlocals()
     state.flushglobals()
