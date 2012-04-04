@@ -20,7 +20,7 @@ from pyparsing import *
 
 # note: dat,org pseudo-ops
 ops = [None, 'set','add','sub','mul','div','mod','shl','shr',
-       'and','bor','xor','ife','ifn','ifg','ifb','dat','org']
+       'and','bor','xor','ife','ifn','ifg','ifb','dat','org','jsr']
 
 def Keywords(xs):
     return reduce(operator.or_, map(Keyword,xs))
@@ -66,6 +66,48 @@ line      = Group(Optional(label)) +\
                 Optional(inst) +\
                 Suppress(Optional(comment))
 
+class State(object):
+    def __init__(self):
+        self.org = 0                # current assembly position
+        self.maxorg = 0             # high water mark for what we must actually emit
+        self.out = [0] * 0x10000
+        self.localsyms = {}         # sym -> addr
+        self.globalsyms = {}        # sym -> addr
+        self.fixups = {}            # addr -> sym
+
+    def emit(self,x):
+        if type(x) == int: self.out[ self.org ] = x
+        else:              self.fixups[ self.org ] = x
+        self.org += 1
+
+    def flushlocals(self):
+        for f,s in self.fixups.items()[:]:
+            if s.startswith('.'):
+                if s in self.localsyms:
+                    self.out[f] = self.localsyms[s]
+                    del self.fixups[f]
+                else:
+                    raise Exception('Unresolved local symbol %s' % s)
+        self.localsyms = {}
+
+    def flushglobals(self):
+        for f,s in self.fixups.items()[:]:
+            if not s.startswith('.'):
+                if s in self.globalsyms:
+                    self.out[f] = self.globalsyms[s]
+                    del self.fixups[f]
+                else:
+                    raise Exception('Unresolved global symbol %s' % s)
+        self.globalsyms = {}
+
+    def define(self, sym):
+        # if it's global, we need to flush the locals.
+        if not sym.startswith('.'):
+            self.flushlocals()
+            self.globalsyms[sym] = self.org
+        else:   # otherwise just add it to the local syms
+            self.localsyms[sym] = self.org
+
 def main(args):
     src = ''
     has_src = False
@@ -92,32 +134,7 @@ def main(args):
     if not dest:
         raise Exception( 'No output specified.' )
 
-    org = 0
-    maxorg = 0
-    out = [0] * 0x10000;
-    localsyms = {};       # local syms defined
-    globalsyms = {};      # global syms defined
-    fixups = {};          # addr -> sym
-
-    def flushlocals():
-        for f,s in fixups.items()[:]:
-            if s.startswith('.'):
-                if s in localsyms:
-                    out[f] = localsyms[s]
-                    del fixups[f]
-                else:
-                    raise Exception('Unresolved local symbol %s' % s)
-        localsyms = {}
-
-    def flushglobals():
-        for f,s in fixups.items()[:]:
-            if not s.startswith('.'):
-                if s in globalsyms:
-                    out[f] = globalsyms[s]
-                    del fixups[f]
-                else:
-                    raise Exception('Unresolved global symbol %s' % s)
-        globalsyms = {}
+    state = State()
 
     def assemble_arg(x):
         # return (bits,[extra words])
@@ -154,59 +171,55 @@ def main(args):
         rr = line.parseString(l,parseAll=True)
 
         if len(rr[0]):
-            sym = rr[0][0]
-            # defining a sym. if it's global, we need to flush the locals.
-            if not sym.startswith('.'):
-                flushlocals()
-                globalsyms[sym] = org
-            else:   # otherwise just add it to the local syms
-                localsyms[sym] = org
+            state.define(rr[0][0])
 
         # actually assemble some opcodes
         if len(rr) > 1:
             op = rr[1][0]
             args = rr[2]
 
+            def check_num_operands(expected):
+                if len(args) != expected:
+                    raise Exception( 'Expected %d operands for `%s`, got %d' % (expected, op, len(args)) )
+
             opindex = ops.index(op)
             if op == 'org':
-                maxorg = max(org,maxorg)
+                check_num_operands(1)
+                state.maxorg = max(state.org,state.maxorg)
                 if type(args[0]) == int:
-                    org = args[0]
+                    state.org = args[0]
                 else:
                     raise Exception( 'Don\'t know how to evaluate `%s` in argument of `ord`' % args[0] )
             elif op == 'dat':         # various literal data
                 for a in args:
-                    if type(a) == int:
-                        out[org] = a
-                        org += 1
+                    if type(a) == int: state.emit(a)
                     elif type(a) == StrData:
-                        for x in a.expr:
-                            out[org] = ord(x)
-                            org += 1
-                    else: # a symbol
-                        fixups[org] = a
-                        org += 1
+                        for x in a.expr: state.emit(ord(x))
+                    else: state.emit(a) # a symbol
+
+            elif op == 'jsr':     # todo: proper dispatch for extended ops
+                check_num_operands(1)
+                # extended instruction format aaaaaaoooooo0000: 0=zero, o=opcode, a=operand
+                op1,e1 = assemble_arg(args[0])
+                state.emit(0 | (1<<4) | (op1<<10))
+                for e in e1: state.emit(e)
+
             else:
+                check_num_operands(2)
                 op1,e1 = assemble_arg(args[0])
                 op2,e2 = assemble_arg(args[1])
                 # instruction format: bbbbbbaaaaaaoooo: o=opcode, a=first operand, b=second operand
-                instr = opindex | (op1<<4) | (op2<<10)
-                out[org] = instr
-                org += 1
-                for e in (e1+e2):   # extra words for immediates
-                    if type(e) == str: fixups[org] = e  # operand is a reference to a symbol, which may not be known yet
-                    else: out[org] = e                  # otherwise, it's just a straight immediate we can encode directly
-                    org += 1
-                pass
+                state.emit(opindex | (op1<<4) | (op2<<10))
+                for e in e1+e2: state.emit(e)
 
-    flushlocals()
-    flushglobals()
-    maxorg = max(org,maxorg)
+    state.flushlocals()
+    state.flushglobals()
+    state.maxorg = max(state.org,state.maxorg)
 
     # now output the assembled code:
-    for i in xrange(0,maxorg):
-        dest.write( chr(out[i] & 0xff) )
-        dest.write( chr((out[i] >> 8) & 0xff) )
+    for i in xrange(0,state.maxorg):
+        dest.write( chr(state.out[i] & 0xff) )
+        dest.write( chr((state.out[i] >> 8) & 0xff) )
 
     return 0
 
