@@ -112,6 +112,7 @@ def main(args):
     src = ''
     has_src = False
     dest = None
+    next_is_out = False
     for a in args[1:]:
         if a != '-' and a.startswith('-'):
             if a == '--help':
