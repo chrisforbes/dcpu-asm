@@ -4,12 +4,17 @@ import sys, operator
 from pyparsing import *
 
 # assembler for notch's dcpu-16 architecture
+# specifications here: http://0x10c.com/doc/dcpu-16.txt
 
 # todo:
 #   - support more flexible constexprs
 #   - support something more than just a literal address for org
 #   - better error reporting
 #   - better arg parsing
+#   - make everything case-insensitive [except string literals]
+#   - support extended ops in 0-opcode space (just jsr so far)
+#   - more pseudo-ops (at least ret => set pc,[sp+]
+#   - macros!
 
 # note: dat,org pseudo-ops
 ops = [None, 'set','add','sub','mul','div','mod','shl','shr',
