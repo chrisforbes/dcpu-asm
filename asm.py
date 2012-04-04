@@ -15,6 +15,8 @@ from pyparsing import *
 #   - support extended ops in 0-opcode space (just jsr so far)
 #   - more pseudo-ops (at least ret => set pc,[sp+]
 #   - macros!
+#   - support [busted] push/pop/peek as well as [-sp]/[sp+]/[sp]
+#   - support notch's weird label syntax (leading-:)
 
 # note: dat,org pseudo-ops
 ops = [None, 'set','add','sub','mul','div','mod','shl','shr',
@@ -65,11 +67,30 @@ line      = Group(Optional(label)) +\
                 Suppress(Optional(comment))
 
 def main(args):
-    if len(args) != 3:
-        raise Exception('')
-    # todo: serious commandline parsing
-    src = file(args[1]).read()  # todo: support `-` for read-from-stdin; multiple input files; etc.
-    dest = file(args[2], 'wb')        # todo: -o outfile, support `-` for stdout
+    src = ''
+    has_src = False
+    dest = None
+    for a in args[1:]:
+        if a != '-' and a.startswith('-'):
+            if a == '--help':
+                print 'usage: asm.py -o outfile infile ...'
+                return 0
+            pass
+        else:
+            if next_is_out:
+                if dest: raise Exception( 'Output already specified.' )
+                # todo: support `-` => stdout
+                dest = file(a, 'wb')
+            else:
+                # todo: support `-` => stdin
+                src += file(a).read()
+                has_src = True
+        next_is_out = a == '-o'
+
+    if not has_src:
+        raise Exception( 'No input files.' )
+    if not dest:
+        raise Exception( 'No output specified.' )
 
     org = 0
     maxorg = 0
