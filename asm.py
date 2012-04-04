@@ -139,7 +139,8 @@ def main(args):
     def assemble_arg(x):
         # return (bits,[extra words])
         direct_regs = { 'a':0, 'b':1, 'c':2, 'x':3, 'y':4, 'z':5,
-                        'i':6, 'j':7, 'sp':27, 'pc':28, 'o':29 }
+                        'i':6, 'j':7, 'sp':27, 'pc':28, 'o':29,
+                        'peek':25, 'pop':24, 'push':26 }
         indirect_regs = { 'a':8, 'b':9, 'c':10, 'x':11, 'y':12, 'z':13,
                         'i':14, 'j':15, 'sp':25, 'sp+':24, '-sp':26 }
         indirect_ofs_regs = { 'a':16, 'b':17, 'c':18, 'x':19, 'y':20, 'z':21,
