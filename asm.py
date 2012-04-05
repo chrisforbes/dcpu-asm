@@ -1,7 +1,8 @@
 #!/usr/bin/env python2
 
 import sys, operator
-from pyparsing import *
+from pyparsing import Keyword,Word,Regex,Suppress,\
+    Optional,Group,alphas,alphanums,quotedString,delimitedList
 
 # assembler for notch's dcpu-16 architecture
 # specifications here: http://0x10c.com/doc/dcpu-16.txt
