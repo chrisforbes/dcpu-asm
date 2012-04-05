@@ -2,7 +2,8 @@
 
 import sys, operator
 from pyparsing import Keyword,Word,Regex,Suppress,\
-    Optional,Group,alphas,alphanums,quotedString,delimitedList
+    Optional,Group,alphas,alphanums,quotedString,delimitedList,\
+    CaselessKeyword
 
 # assembler for notch's dcpu-16 architecture
 # specifications here: http://0x10c.com/doc/dcpu-16.txt
@@ -24,6 +25,9 @@ xops = [None, 'jsr']    # encoded in 0-operand space
 
 def Keywords(xs):
     return reduce(operator.or_, map(Keyword,xs))
+
+def CaselessKeywords(xs):
+    return reduce(operator.or_, map(CaselessKeyword,xs))
 
 class MemRef(object):
     def __init__(self,expr):
@@ -51,12 +55,12 @@ def maybeAdd(x):
 
 def basenum(x): return int(str(x[0]),0)
 
-ident     = Keyword('sp+') | Keyword('-sp') |\
+ident     = CaselessKeyword('sp+') | CaselessKeyword('-sp') |\
                 Word(alphas + '_.', alphanums + '_.')
 number    = Regex('0x[0-9a-fA-F]+|[0-9]+').setParseAction(basenum)
 comment   = Regex(';.*$')
 label     = (ident + Suppress(':')) | (Suppress(':') + ident)
-op        = Keywords([o for o in (ops+xops) if o])
+op        = CaselessKeywords([o for o in (ops+xops) if o])
 val3      = ident | number | quotedString.setParseAction(StrData)
 val2      = (val3 + Optional(Suppress('+') + val3)).setParseAction(maybeAdd);
 memref    = (Suppress('[') + val2 + Suppress(']')).setParseAction(MemRef);
@@ -150,7 +154,7 @@ def main(args):
             if x >= 0 and x < 32: return (32+x, [])   # try short immediate form in operand first
             return (31,[x])                           # otherwise, put it in the next word.
         if type(x) == str:
-            if x in direct_regs: return (direct_regs[x], [])
+            if x.lower() in direct_regs: return (direct_regs[x.lower()], [])
             return (31,[x])                           # todo: support emitting short immediate here?
         if type(x) == MemRef: # [arg]
             y = x.expr
@@ -165,7 +169,7 @@ def main(args):
                     if type(y.a) == str or type(y.a) == int:
                         return (indirect_ofs_regs[y.b], [y.a])
             if type(y) == str:
-                if y in indirect_regs: return (indirect_regs[y], [])
+                if y.lower() in indirect_regs: return (indirect_regs[y.lower()], [])
                 return (30,[y])                       # indirect immediate
         raise Exception( 'Don\'t know how to assemble arg `%s`' % x )
 
