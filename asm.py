@@ -162,12 +162,12 @@ def main(args):
                 return (30,[y])
             if type(y) == AddExpr:
                 # todo: do this properly
-                if type(y.a) == str and (y.a) in indirect_ofs_regs:
+                if type(y.a) == str and y.a.lower() in indirect_ofs_regs:
                     if type(y.b) == str or type(y.b) == int:
-                        return (indirect_ofs_regs[y.a], [y.b])
-                if type(y.b) == str and (y.b) in indirect_ofs_regs:
+                        return (indirect_ofs_regs[y.a.lower()], [y.b])
+                if type(y.b) == str and y.b.lower() in indirect_ofs_regs:
                     if type(y.a) == str or type(y.a) == int:
-                        return (indirect_ofs_regs[y.b], [y.a])
+                        return (indirect_ofs_regs[y.b.lower()], [y.a])
             if type(y) == str:
                 if y.lower() in indirect_regs: return (indirect_regs[y.lower()], [])
                 return (30,[y])                       # indirect immediate
