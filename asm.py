@@ -17,11 +17,11 @@ from pyparsing import Keyword,Word,Regex,Suppress,\
 #   - more pseudo-ops (at least ret => set pc,[sp+]
 #   - macros!
 
-# note: dat,org pseudo-ops
 ops = [None, 'set','add','sub','mul','div','mod','shl','shr',
-       'and','bor','xor','ife','ifn','ifg','ifb','dat','org']
+       'and','bor','xor','ife','ifn','ifg','ifb']
 
 xops = [None, 'jsr']    # encoded in 0-operand space
+pops = ['dat','org','def']    # not actually things.
 
 def Keywords(xs):
     return reduce(operator.or_, map(Keyword,xs))
@@ -60,7 +60,7 @@ ident     = CaselessKeyword('sp+') | CaselessKeyword('-sp') |\
 number    = Regex('0x[0-9a-fA-F]+|[0-9]+').setParseAction(basenum)
 comment   = Regex(';.*$')
 label     = (ident + Suppress(':')) | (Suppress(':') + ident)
-op        = CaselessKeywords([o for o in (ops+xops) if o])
+op        = CaselessKeywords([o for o in (ops+xops+pops) if o])
 val3      = ident | number | quotedString.setParseAction(StrData)
 val2      = (val3 + Optional(Suppress('+') + val3)).setParseAction(maybeAdd);
 memref    = (Suppress('[') + val2 + Suppress(']')).setParseAction(MemRef);
@@ -199,6 +199,9 @@ def main(args):
                     if type(a) == StrData:
                         for x in a.expr: state.emit(ord(x))
                     else: state.emit(a) # literal or symbol
+            elif op == 'def':         # random definition (useful for memory mapped peripherals)
+                check_num_operands(2) # (but if you want to do something serious, maybe the C preprocessor is better
+                state.globalsyms[ args[0] ] = args[1]
             elif op in ops:
                 opindex = ops.index(op)
                 check_num_operands(2)

@@ -10,3 +10,6 @@
 global:           ; just a label by itself
 
 :crapstyle  dat "Blah labels are supported too", 0
+
+            def video, 0x8000
+            def keyboard, 0x9000
