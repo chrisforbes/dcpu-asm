@@ -13,11 +13,8 @@ from pyparsing import Keyword,Word,Regex,Suppress,\
 #   - better error reporting
 #   - better arg parsing
 #   - make everything case-insensitive [except string literals]
-#   - support extended ops in 0-opcode space (just jsr so far)
 #   - more pseudo-ops (at least ret => set pc,[sp+]
 #   - macros!
-#   - support [busted] push/pop/peek as well as [-sp]/[sp+]/[sp]
-#   - support notch's weird label syntax (leading-:)
 
 # note: dat,org pseudo-ops
 ops = [None, 'set','add','sub','mul','div','mod','shl','shr',
