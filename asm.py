@@ -224,8 +224,8 @@ def main(args):
 
     # now output the assembled code:
     for i in xrange(0,state.maxorg):
-        dest.write( chr(state.out[i] & 0xff) )
         dest.write( chr((state.out[i] >> 8) & 0xff) )
+        dest.write( chr(state.out[i] & 0xff) )
 
     return 0
 
