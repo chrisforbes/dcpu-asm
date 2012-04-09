@@ -23,6 +23,12 @@ ops = [None, 'set','add','sub','mul','div','mod','shl','shr',
 xops = [None, 'jsr']    # encoded in 0-operand space
 pops = ['dat','org','def']    # not actually things.
 
+rewrites = {
+    'ret': lambda xs: ('set', ['pc', 'pop']),
+    'jmp': lambda xs: ('set', ['pc'] + xs),
+    'call': lambda xs: ('jsr', xs)
+}
+
 def Keywords(xs):
     return reduce(operator.or_, map(Keyword,xs))
 
@@ -60,12 +66,12 @@ ident     = CaselessKeyword('sp+') | CaselessKeyword('-sp') |\
 number    = Regex('0x[0-9a-fA-F]+|[0-9]+').setParseAction(basenum)
 comment   = Regex(';.*$')
 label     = (ident + Suppress(':')) | (Suppress(':') + ident)
-op        = CaselessKeywords([o for o in (ops+xops+pops) if o])
+op        = CaselessKeywords([o for o in (ops+xops+pops+rewrites.keys()) if o])
 val3      = ident | number | quotedString.setParseAction(StrData)
 val2      = (val3 + Optional(Suppress('+') + val3)).setParseAction(maybeAdd);
 memref    = (Suppress('[') + val2 + Suppress(']')).setParseAction(MemRef);
 val       = val2 | memref
-inst      = Group(op) + Group(delimitedList(val))
+inst      = Group(op) + Group(Optional(delimitedList(val)))
 line      = Group(Optional(label)) +\
                 Optional(inst) +\
                 Suppress(Optional(comment))
@@ -188,11 +194,16 @@ def main(args):
         # actually assemble some opcodes
         if len(rr) > 1:
             op = rr[1][0]
-            args = rr[2]
+            args = rr[2][:] # listify to drop extra parser state we dont care about here.
+
+            # apply rewrite rules for pseudo-ops
+            while op in rewrites:
+                op,args = rewrites[op](args)
 
             def check_num_operands(expected):
                 if len(args) != expected:
                     raise Exception( 'Expected %d operands for `%s`, got %d' % (expected, op, len(args)) )
+
             if op == 'org':
                 check_num_operands(1)
                 state.maxorg = max(state.org,state.maxorg)

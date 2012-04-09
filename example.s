@@ -4,10 +4,13 @@
             set c, [a]          ; mem reference
             set [i], [j]        ; mem-to-mem ops, but this is dumb
             set [sp], [0x8000+i]  ;
-            jsr global
+            jsr do_stuff
 .local:     sub pc, 1           ; loop here forever
 .data:      dat "Hello World", 0
-global:           ; just a label by itself
+do_stuff:   add a, 1
+            jmp .enddo
+            jmp do_stuff
+.enddo:	    ret
 
 :crapstyle  dat "Blah labels are supported too", 0
 
