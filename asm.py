@@ -117,12 +117,18 @@ def main(args):
     has_src = False
     dest = None
     next_is_out = False
+    little_endian = True
     for a in args[1:]:
         if a != '-' and a.startswith('-'):
             if a == '--help':
-                print 'usage: asm.py -o outfile infile ...'
+                print 'usage: asm.py [options] -o outfile infile ...'
+                print 'options: -b,--big:    emit big-endian images'
+                print '         -l,--little: emit little-endian images (default)'
                 return 0
-            pass
+            if a == '-b' or a == '--big':
+                little_endian = False
+            if a == '-l' or a == '--little':
+                little_endian = True
         else:
             if next_is_out:
                 if dest: raise Exception( 'Output already specified.' )
@@ -224,8 +230,14 @@ def main(args):
 
     # now output the assembled code:
     for i in xrange(0,state.maxorg):
+        # support both big and little endian output.
+        # the spec says little endian, but much of the other tooling
+        # assumes big-endian images.
+        if little_endian:
+            dest.write( chr(state.out[i] & 0xff) )
         dest.write( chr((state.out[i] >> 8) & 0xff) )
-        dest.write( chr(state.out[i] & 0xff) )
+        if not little_endian:
+            dest.write( chr(state.out[i] & 0xff) )
 
     return 0
 
