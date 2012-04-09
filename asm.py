@@ -12,9 +12,8 @@ from pyparsing import Keyword,Word,Regex,Suppress,\
 #   - support more flexible constexprs
 #   - support something more than just a literal address for org
 #   - better error reporting
-#   - better arg parsing
 #   - make everything case-insensitive [except string literals]
-#   - more pseudo-ops (at least ret => set pc,[sp+]
+#   - more pseudo-ops
 #   - macros!
 
 ops = [None, 'set','add','sub','mul','div','mod','shl','shr',
