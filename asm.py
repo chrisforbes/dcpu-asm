@@ -25,7 +25,9 @@ pops = ['dat','org','def']    # not actually things.
 rewrites = {
     'ret': lambda xs: ('set', ['pc', 'pop']),
     'jmp': lambda xs: ('set', ['pc'] + xs),
-    'call': lambda xs: ('jsr', xs)
+    'call': lambda xs: ('jsr', xs),
+    'dw': lambda xs: ('dat', xs),
+    'data': lambda xs: ('dat', xs),
 }
 
 def Keywords(xs):

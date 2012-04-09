@@ -12,7 +12,8 @@ do_stuff:   add a, 1
             jmp do_stuff
 .enddo:	    ret
 
-:crapstyle  dat "Blah labels are supported too", 0
+:crapstyle  dw "Blah labels are supported too", 0
+            data 42         ; dat/dw/data are all the same thing.
 
             def video, 0x8000
             def keyboard, 0x9000
