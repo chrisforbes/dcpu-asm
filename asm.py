@@ -20,7 +20,7 @@ ops = [None, 'set','add','sub','mul','div','mod','shl','shr',
        'and','bor','xor','ife','ifn','ifg','ifb']
 
 xops = [None, 'jsr']    # encoded in 0-operand space
-pops = ['dat','org','def']    # not actually things.
+pops = ['dat','org','def','res']    # not actually things.
 
 rewrites = {
     'ret': lambda xs: ('set', ['pc', 'pop']),
@@ -28,6 +28,7 @@ rewrites = {
     'call': lambda xs: ('jsr', xs),
     'dw': lambda xs: ('dat', xs),
     'data': lambda xs: ('dat', xs),
+    'reserve': lambda xs: ('res', xs),
 }
 
 def Keywords(xs):
@@ -211,15 +212,26 @@ def main(args):
                 if type(args[0]) == int:
                     state.org = args[0]
                 else:
-                    raise Exception( 'Don\'t know how to evaluate `%s` in argument of `ord`' % args[0] )
+                    raise Exception( 'Don\'t know how to evaluate `%s` in argument of `org`' % args[0] )
+
+            if op == 'res':
+                check_num_operands(1)
+                state.maxorg = max(state.org,state.maxorg)
+                if type(args[0]) == int:
+                    state.org += args[0]
+                else:
+                    raise Exception( 'Don\'t know how to evaluate `%s` in argument of `res`' % args[0] )
+
             elif op == 'dat':         # various literal data
                 for a in args:
                     if type(a) == StrData:
                         for x in a.expr: state.emit(ord(x))
                     else: state.emit(a) # literal or symbol
+
             elif op == 'def':         # random definition (useful for memory mapped peripherals)
                 check_num_operands(2) # (but if you want to do something serious, maybe the C preprocessor is better
                 state.globalsyms[ args[0] ] = args[1]
+
             elif op in ops:
                 opindex = ops.index(op)
                 check_num_operands(2)
@@ -228,6 +240,7 @@ def main(args):
                 # instruction format: bbbbbbaaaaaaoooo: o=opcode, a=first operand, b=second operand
                 state.emit(opindex | (op1<<4) | (op2<<10))
                 for e in e1+e2: state.emit(e)
+
             elif op in xops:
                 opindex = xops.index(op)
                 check_num_operands(1)
